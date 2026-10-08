@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calorie Calculator</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="app-header">
+  <div class="app-header-title">
+    <h1>Calorie Calculator</h1>
+    <p class="app-header-subtitle">Daily budget, food &amp; exercise log, weight projection</p>
+  </div>
+  <div class="app-header-meta">
+    <button id="profile-toggle" type="button" class="text-button">Profile &amp; Goals</button>
+  </div>
+</header>
+
+<section id="profile-panel" class="panel">
+  <div class="panel-header">
+    <h2>Profile &amp; Goals</h2>
+    <button id="profile-collapse" type="button" class="text-button panel-toggle" aria-expanded="true">Hide</button>
+  </div>
+  <div id="profile-body" class="panel-body">
+    <form id="profile-form" class="profile-form">
+      <div class="field-row">
+        <label class="field">
+          <span>Units</span>
+          <select id="f-units">
+            <option value="imperial">Imperial (lb, ft/in)</option>
+            <option value="metric">Metric (kg, cm)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Sex</span>
+          <select id="f-sex">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other / Prefer not to say</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Age</span>
+          <input id="f-age" type="number" min="13" max="100" step="1" required />
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field" id="f-height-imperial-wrap">
+          <span>Height</span>
+          <span class="field-inline">
+            <input id="f-height-ft" type="number" min="3" max="8" step="1" placeholder="ft" />
+            <input id="f-height-in" type="number" min="0" max="11" step="1" placeholder="in" />
+          </span>
+        </label>
+        <label class="field" id="f-height-metric-wrap" hidden>
+          <span>Height (cm)</span>
+          <input id="f-height-cm" type="number" min="100" max="250" step="1" />
+        </label>
+        <label class="field" id="f-weight-imperial-wrap">
+          <span>Weight (lb)</span>
+          <input id="f-weight-lb" type="number" min="60" max="700" step="0.1" />
+        </label>
+        <label class="field" id="f-weight-metric-wrap" hidden>
+          <span>Weight (kg)</span>
+          <input id="f-weight-kg" type="number" min="30" max="300" step="0.1" />
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field field-wide">
+          <span>Activity level</span>
+          <select id="f-activity">
+            <option value="1.2">Sedentary (little/no exercise)</option>
+            <option value="1.375">Light (exercise 1-3 days/week)</option>
+            <option value="1.55" selected>Moderate (exercise 3-5 days/week)</option>
+            <option value="1.725">Active (exercise 6-7 days/week)</option>
+            <option value="1.9">Very active (hard daily exercise / physical job)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label class="field">
+          <span>Goal</span>
+          <select id="f-goal">
+            <option value="lose">Lose weight</option>
+            <option value="maintain">Maintain weight</option>
+            <option value="gain">Gain weight</option>
+          </select>
+        </label>
+        <label class="field" id="f-rate-wrap">
+          <span id="f-rate-label">Rate (lb/week)</span>
+          <input id="f-rate" type="number" min="0" max="3" step="0.25" value="1" />
+        </label>
+        <label class="field field-wide">
+          <span>Macro split</span>
+          <select id="f-macro-preset">
+            <option value="balanced">Balanced (30% protein / 40% carb / 30% fat)</option>
+            <option value="high-protein">High protein (35% / 35% / 30%)</option>
+            <option value="low-carb">Low carb (30% / 20% / 50%)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <button type="submit" class="primary-button">Save &amp; recalculate</button>
+      </div>
+    </form>
+
+    <div id="profile-summary" class="profile-summary status-message">
+      Fill in your profile and save to see your daily calorie and macro targets.
+    </div>
+  </div>
+</section>
+
+<main class="app-main">
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Daily Summary</h2>
+      <div class="day-nav">
+        <button id="day-prev" type="button" class="text-button">&larr; Prev</button>
+        <span id="day-label" class="day-label"></span>
+        <button id="day-next" type="button" class="text-button">Next &rarr;</button>
+        <button id="day-today" type="button" class="text-button">Today</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div id="summary-root"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Food Log</h2>
+    </div>
+    <div class="panel-body">
+      <form id="food-form" class="log-form">
+        <input id="food-name" type="text" placeholder="Food name" required />
+        <input id="food-calories" type="number" min="0" step="1" placeholder="kcal" required />
+        <input id="food-protein" type="number" min="0" step="0.1" placeholder="protein g" />
+        <input id="food-carbs" type="number" min="0" step="0.1" placeholder="carbs g" />
+        <input id="food-fat" type="number" min="0" step="0.1" placeholder="fat g" />
+        <button type="submit" class="primary-button">Add</button>
+      </form>
+      <div id="food-list" class="entry-list"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Exercise Log</h2>
+    </div>
+    <div class="panel-body">
+      <form id="exercise-form" class="log-form">
+        <input id="exercise-name" type="text" placeholder="Activity name" required />
+        <input id="exercise-calories" type="number" min="0" step="1" placeholder="kcal burned" required />
+        <button type="submit" class="primary-button">Add</button>
+      </form>
+      <div id="exercise-list" class="entry-list"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Weight Projection</h2>
+    </div>
+    <div class="panel-body">
+      <div id="projection-root"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <p>All data is stored only in this browser (localStorage) - nothing syncs across devices and nothing is sent anywhere.</p>
+  <p>Calorie targets are an estimate (Mifflin-St Jeor equation) for general guidance only, not medical advice.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
