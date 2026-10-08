@@ -118,8 +118,9 @@
 
   // ---------- calorie / macro math ----------
 
-  function computeBMR(profile) {
-    const base = 10 * profile.weightKg + 6.25 * profile.heightCm - 5 * profile.age;
+  function computeBMR(profile, weightKgOverride) {
+    const weightKg = weightKgOverride !== undefined ? weightKgOverride : profile.weightKg;
+    const base = 10 * weightKg + 6.25 * profile.heightCm - 5 * profile.age;
     if (profile.sex === "male") return base + 5;
     if (profile.sex === "female") return base - 161;
     return base - 78; // average of the male/female constants
@@ -134,6 +135,23 @@
     else if (profile.goal === "gain") deficitPerDay = (profile.rate * kcalPerUnit) / 7;
     const dailyTarget = Math.max(tdee + deficitPerDay, 0);
     return { bmr, tdee, dailyTarget, deficitPerDay };
+  }
+
+  // Projects weight week-by-week assuming a FIXED daily calorie intake,
+  // recomputing maintenance (and therefore the actual deficit) from each
+  // week's updated weight - so the curve naturally decelerates as
+  // maintenance drops/rises toward the intake amount, instead of a straight
+  // line to an unreachable endpoint.
+  function projectWeeklySeries(profile, dailyCalories, weeks) {
+    const series = [];
+    let weightKg = profile.weightKg;
+    for (let w = 0; w <= weeks; w++) {
+      const maintenance = computeBMR(profile, weightKg) * profile.activityMultiplier;
+      const deficit = dailyCalories - maintenance;
+      series.push({ week: w, weightKg, maintenance, deficit });
+      weightKg += (deficit * 7) / KCAL_PER_KG; // weightKg is tracked in kg regardless of display units
+    }
+    return series;
   }
 
   function computeMacroGrams(dailyTarget, presetKey) {
@@ -500,14 +518,11 @@
     }
 
     const { tdee, dailyTarget, deficitPerDay } = computeTargets(p);
-    const kcalPerUnit = p.units === "imperial" ? KCAL_PER_LB : KCAL_PER_KG;
     const unitLabel = p.units === "imperial" ? "lb" : "kg";
-    const startWeight = p.units === "imperial" ? kgToLb(p.weightKg) : p.weightKg;
-    const goalChangePerWeek = (deficitPerDay * 7) / kcalPerUnit;
+    const toDisplay = (weightKg) => (p.units === "imperial" ? kgToLb(weightKg) : weightKg);
 
     const WEEKS = 12;
-    const goalPoints = [];
-    for (let w = 0; w <= WEEKS; w++) goalPoints.push(startWeight + goalChangePerWeek * w);
+    const goalSeries = projectWeeklySeries(p, dailyTarget, WEEKS);
 
     // Actual-based projection from logged history (trailing up to 14 days with entries).
     const loggedDates = Object.keys(state.logs)
@@ -515,7 +530,7 @@
       .sort()
       .slice(-14);
 
-    let actualPoints = null;
+    let actualSeries = null;
     let avgNet = null;
     if (loggedDates.length >= 3) {
       const totalNet = loggedDates.reduce((sum, d) => {
@@ -525,13 +540,10 @@
         return sum + (foodCals - exerciseCals);
       }, 0);
       avgNet = totalNet / loggedDates.length;
-      const actualDeficitPerDay = avgNet - tdee;
-      const actualChangePerWeek = (actualDeficitPerDay * 7) / kcalPerUnit;
-      actualPoints = [];
-      for (let w = 0; w <= WEEKS; w++) actualPoints.push(startWeight + actualChangePerWeek * w);
+      actualSeries = projectWeeklySeries(p, avgNet, WEEKS);
     }
 
-    const goalEnd = goalPoints[WEEKS];
+    const goalEnd = toDisplay(goalSeries[WEEKS].weightKg);
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + WEEKS * 7);
     const futureDateLabel = futureDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -539,10 +551,11 @@
     let summaryHtml = "<div class='projection-summary'>" +
       "Maintenance: <strong>" + Math.round(tdee) + " kcal/day</strong>. Target: <strong>" + Math.round(dailyTarget) + " kcal/day</strong> " +
       "(" + (deficitPerDay <= 0 ? "" : "+") + Math.round(deficitPerDay) + " kcal/day vs. maintenance). " +
-      "At this rate, projected weight in " + WEEKS + " weeks (" + futureDateLabel + "): <strong>" + round(goalEnd, 1) + " " + unitLabel + "</strong>.";
+      "At this rate, projected weight in " + WEEKS + " weeks (" + futureDateLabel + "): <strong>" + round(goalEnd, 1) + " " + unitLabel + "</strong>. " +
+      "Maintenance drops as weight drops, so the deficit (and rate of loss) shrinks over time rather than staying constant - see the table below.";
 
-    if (actualPoints) {
-      const actualEnd = actualPoints[WEEKS];
+    if (actualSeries) {
+      const actualEnd = toDisplay(actualSeries[WEEKS].weightKg);
       summaryHtml += "<br/>Based on your logged average of <strong>" + Math.round(avgNet) + " kcal/day</strong> over the last " +
         loggedDates.length + " logged day" + (loggedDates.length === 1 ? "" : "s") + ", you're trending toward <strong>" +
         round(actualEnd, 1) + " " + unitLabel + "</strong> by then.";
@@ -551,8 +564,35 @@
     }
     summaryHtml += "</div>";
 
+    const goalPoints = goalSeries.map((row) => toDisplay(row.weightKg));
+    const actualPoints = actualSeries ? actualSeries.map((row) => toDisplay(row.weightKg)) : null;
     const chartHtml = renderProjectionChart(goalPoints, actualPoints, unitLabel);
-    els.projectionRoot.innerHTML = summaryHtml + chartHtml;
+
+    let tablesHtml = "<div class='projection-tables'>" +
+      renderProjectionTable("Goal projection (at your target calories)", goalSeries, unitLabel, toDisplay, "goal");
+    if (actualSeries) {
+      tablesHtml += renderProjectionTable("Actual-based projection (at your logged average)", actualSeries, unitLabel, toDisplay, "actual");
+    }
+    tablesHtml += "</div>";
+
+    els.projectionRoot.innerHTML = summaryHtml + chartHtml + tablesHtml;
+  }
+
+  function renderProjectionTable(title, series, unitLabel, toDisplay, variant) {
+    const rows = series
+      .map(
+        (row) =>
+          "<tr><td>" + row.week + "</td><td>" + round(toDisplay(row.weightKg), 1) + " " + unitLabel + "</td>" +
+          "<td>" + Math.round(row.maintenance) + " kcal</td>" +
+          "<td>" + (row.deficit <= 0 ? "" : "+") + Math.round(row.deficit) + " kcal</td></tr>"
+      )
+      .join("");
+    return (
+      "<div class='projection-table-wrap'><h3 class='projection-table-title projection-table-title-" + variant + "'>" + title + "</h3>" +
+      "<div class='projection-table-scroll'><table class='projection-table'><thead><tr>" +
+      "<th>Week</th><th>Weight</th><th>Maintenance</th><th>Deficit/day</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div></div>"
+    );
   }
 
   function renderProjectionChart(goalPoints, actualPoints, unitLabel) {

@@ -28,7 +28,9 @@ profile and daily logs are saved to that browser's `localStorage` only:
   plus optional protein/carbs/fat for food). Exercise calories add back
   to your daily budget, same as Lose It!'s exercise credit. Entries are
   per-day and removable.
-- **Weight Projection** - a 12-week projected trend chart with two lines:
+- **Weight Projection** - a 12-week projected trend chart with two lines,
+  plus a week-by-week table (week / weight / maintenance / deficit) for
+  each:
   - **Goal** (dashed) - where your current target calories would take you
     if followed exactly, based on the deficit/surplus implied by your
     profile's rate.
@@ -36,6 +38,12 @@ profile and daily logs are saved to that browser's `localStorage` only:
     minus exercise, over the last up to 14 days you actually logged
     something) would take you instead. Only appears once you've logged at
     least 3 days.
+
+  Both recompute maintenance every week from that week's projected weight
+  (same BMR/TDEE formula, lighter body → lower maintenance), so the deficit
+  - and the rate of loss - shrinks over time at a fixed calorie intake,
+  instead of a straight line to an unreachable endpoint. This is the same
+  reason real diets plateau.
 
 ## The math
 
@@ -49,8 +57,10 @@ profile and daily logs are saved to that browser's `localStorage` only:
 - **Macro targets** = daily target split by your chosen preset's
   percentages, converted to grams (protein/carbs at 4 kcal/g, fat at
   9 kcal/g).
-- **Weight projection** runs the same deficit/surplus math forward across
-  12 weeks from your current weight.
+- **Weight projection** re-runs the BMR → TDEE math for each of the 12
+  weeks using that week's projected weight (holding daily calorie intake
+  fixed), so maintenance - and the resulting deficit - updates every week
+  instead of staying constant.
 
 These are standard estimation formulas for general guidance, not medical
 advice - individual metabolism varies.

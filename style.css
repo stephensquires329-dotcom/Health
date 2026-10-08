@@ -275,6 +275,47 @@ body {
 .legend-swatch.goal { border-top-style: dashed; border-color: var(--accent); }
 .legend-swatch.actual { border-top-style: solid; border-color: var(--protein); }
 
+.projection-tables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 18px;
+}
+.projection-table-wrap { flex: 1 1 280px; min-width: 0; }
+.projection-table-title {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+}
+.projection-table-title-goal { color: var(--accent); }
+.projection-table-title-actual { color: var(--protein); }
+.projection-table-scroll {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+table.projection-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.projection-table th, .projection-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.projection-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.projection-table tbody tr:nth-child(odd) { background: var(--row-alt); }
+.projection-table tbody tr:first-child { font-weight: 600; }
+
 .app-footer {
   text-align: center;
   padding: 20px;
